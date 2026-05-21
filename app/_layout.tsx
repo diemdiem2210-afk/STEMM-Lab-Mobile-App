@@ -22,8 +22,6 @@ export default function RootLayout() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
 
         <Stack.Screen name="home/index" options={{ title: 'STEMM Lab' }} />
-        <Stack.Screen name="auth/login" options={{ title: 'Login' }} />
-        <Stack.Screen name="auth/register" options={{ title: 'Register' }} />
         <Stack.Screen name="activities/index" options={{ title: 'Activities' }} />
         <Stack.Screen name="leaderboard/index" options={{ title: 'Leaderboard' }} />
         <Stack.Screen name="profile/index" options={{ title: 'Profile' }} />

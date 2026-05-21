@@ -3,15 +3,16 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyByxfvcgBc0FJE-Axd-I9wcjjgspSKkyUY",
+  authDomain: "stemm-lab-mobile-app.firebaseapp.com",
+  projectId: "stemm-lab-mobile-app",
+  storageBucket: "stemm-lab-mobile-app.firebasestorage.app",
+  messagingSenderId: "959486924935",
+  appId: "1:959486924935:web:13dfaa29a29f585dd78022",
 };
 
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+
 export const db = getFirestore(app);
