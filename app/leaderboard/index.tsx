@@ -5,9 +5,13 @@ import {
   FlatList,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 
+import { deleteDoc, doc } from "firebase/firestore";
+
+import { db } from "../../services/firebase";
 import { getTopResults } from "../../services/resultService";
 
 export default function LeaderboardScreen() {
@@ -22,11 +26,25 @@ export default function LeaderboardScreen() {
     try {
       const data = await getTopResults();
 
+      console.log("Results count:", data.length);
+
       setResults(data as any[]);
     } catch (error) {
       console.error("Leaderboard Error:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "results", id));
+
+      setResults((prev) =>
+        prev.filter((item) => item.id !== id)
+      );
+    } catch (error) {
+      console.error("Delete Error:", error);
     }
   };
 
@@ -41,7 +59,11 @@ export default function LeaderboardScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>
-        Leaderboard
+        Activity Results
+      </Text>
+
+      <Text style={styles.count}>
+        Total Results: {results.length}
       </Text>
 
       <FlatList
@@ -53,7 +75,7 @@ export default function LeaderboardScreen() {
               #{index + 1}
             </Text>
 
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={styles.name}>
                 {item.username}
               </Text>
@@ -63,9 +85,20 @@ export default function LeaderboardScreen() {
               </Text>
             </View>
 
-            <Text style={styles.score}>
-              {item.score}
-            </Text>
+            <View style={{ alignItems: "center" }}>
+              <Text style={styles.score}>
+                {item.score}
+              </Text>
+
+              <TouchableOpacity
+                onPress={() => handleDelete(item.id)}
+                style={styles.deleteButton}
+              >
+                <Text style={styles.deleteText}>
+                  Delete
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       />
@@ -88,7 +121,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 30,
     fontWeight: "bold",
+    marginBottom: 10,
+  },
+
+  count: {
     marginBottom: 20,
+    color: "gray",
   },
 
   card: {
@@ -120,5 +158,18 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "bold",
     color: "#007AFF",
+  },
+
+  deleteButton: {
+    marginTop: 8,
+    backgroundColor: "red",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+
+  deleteText: {
+    color: "white",
+    fontWeight: "bold",
   },
 });

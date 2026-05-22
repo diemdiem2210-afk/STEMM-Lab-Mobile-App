@@ -1,10 +1,10 @@
 import { Link } from 'expo-router';
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 
 import { colors } from '@/constants/Colors';
@@ -44,11 +44,11 @@ export default function HomeScreen() {
         <Link href="/leaderboard" asChild>
           <Pressable style={styles.smallCard}>
             <Text style={styles.smallCardTitle}>
-              Leaderboard
+              Activity Results
             </Text>
 
             <Text style={styles.smallCardText}>
-              Compare team scores
+              View saved reaction and trace attempts
             </Text>
           </Pressable>
         </Link>

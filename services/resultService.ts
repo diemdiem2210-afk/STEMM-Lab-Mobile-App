@@ -1,10 +1,10 @@
 import {
-    addDoc,
-    collection,
-    getDocs,
-    limit,
-    orderBy,
-    query,
+  addDoc,
+  collection,
+  getDocs,
+  limit,
+  orderBy,
+  query,
 } from "firebase/firestore";
 
 import { ActivityResult } from "../models/resultModel";
@@ -22,12 +22,30 @@ export const saveResultToFirestore = async (
   }
 };
 
+export const addFakeResults = async () => {
+  try {
+    for (let i = 1; i <= 21; i++) {
+      await addDoc(collection(db, "results"), {
+        username: `Test User ${i}`,
+        activityName: "Tap Dominant",
+        score: Math.floor(Math.random() * 100),
+      });
+    }
+
+    console.log("21 fake results added");
+  } catch (error) {
+    console.error("Fake result error:", error);
+  }
+};
+
 export const getTopResults = async () => {
   try {
+    await addFakeResults();
+
     const q = query(
       collection(db, "results"),
       orderBy("score", "desc"),
-      limit(10)
+      limit(20)
     );
 
     const snapshot = await getDocs(q);
