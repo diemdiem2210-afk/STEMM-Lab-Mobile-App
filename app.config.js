@@ -5,6 +5,8 @@ export default {
     version: "1.0.0",
     orientation: "portrait",
 
+    plugins: ["react-native-google-mobile-ads"],
+
     android: {
       package: "com.tonnyuuu340.stemmlabmobileapp"
     },
