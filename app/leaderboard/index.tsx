@@ -1,175 +1,273 @@
-import { useEffect, useState } from "react";
-
+import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 
-import { deleteDoc, doc } from "firebase/firestore";
+import { colors } from "@/constants/Colors";
+import { getChallengeState } from "@/services/challengeService";
+import { getTeamProfile } from "@/services/teamProfileService";
 
-import { db } from "../../services/firebase";
-import { getTopResults } from "../../services/resultService";
+type TeamLeaderboardRow = {
+  teamName: string;
+  teamDiscriminator: string;
+  completedCount: number;
+  totalActivities: number;
+  totalTimeSeconds: number | null;
+};
 
 export default function LeaderboardScreen() {
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<TeamLeaderboardRow[]>([]);
 
   useEffect(() => {
     loadLeaderboard();
   }, []);
 
   const loadLeaderboard = async () => {
-    try {
-      const data = await getTopResults();
+    const profile = await getTeamProfile();
+    const challenge = await getChallengeState();
 
-      console.log("Results count:", data.length);
-
-      setResults(data as any[]);
-    } catch (error) {
-      console.error("Leaderboard Error:", error);
-    } finally {
-      setLoading(false);
+    if (!profile) {
+      setRows([]);
+      return;
     }
+
+    const totalTimeSeconds =
+      challenge.startedAt && challenge.completedAt
+        ? Math.floor(
+            (new Date(challenge.completedAt).getTime() -
+              new Date(challenge.startedAt).getTime()) /
+              1000
+          )
+        : null;
+
+    const currentTeamRow: TeamLeaderboardRow = {
+      teamName: profile.teamName,
+      teamDiscriminator: profile.teamDiscriminator,
+      completedCount: challenge.completedActivityIds.length,
+      totalActivities: 7,
+      totalTimeSeconds,
+    };
+
+    setRows([currentTeamRow]);
   };
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "results", id));
+  const sortedRows = useMemo(() => {
+    return [...rows].sort((a, b) => {
+      if (b.completedCount !== a.completedCount) {
+        return b.completedCount - a.completedCount;
+      }
 
-      setResults((prev) =>
-        prev.filter((item) => item.id !== id)
-      );
-    } catch (error) {
-      console.error("Delete Error:", error);
+      if (a.totalTimeSeconds === null && b.totalTimeSeconds === null) {
+        return 0;
+      }
+
+      if (a.totalTimeSeconds === null) {
+        return 1;
+      }
+
+      if (b.totalTimeSeconds === null) {
+        return -1;
+      }
+
+      return a.totalTimeSeconds - b.totalTimeSeconds;
+    });
+  }, [rows]);
+
+  const formatTime = (seconds: number | null) => {
+    if (seconds === null) {
+      return "--";
     }
-  };
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+
+    return `${mins}m ${secs}s`;
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>
-        Activity Results
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <Text style={styles.title}>STEMM Challenge Leaderboard</Text>
+
+      <Text style={styles.subtitle}>
+        Teams are ranked by how many activities they completed. If teams finish
+        the same number of activities, the shortest completion time wins.
       </Text>
 
-      <Text style={styles.count}>
-        Total Results: {results.length}
-      </Text>
+      <View style={styles.tableHeader}>
+        <Text style={[styles.headerText, styles.rankColumn]}>Rank</Text>
+        <Text style={[styles.headerText, styles.teamColumn]}>Team</Text>
+        <Text style={[styles.headerText, styles.completedColumn]}>
+          Completed
+        </Text>
+        <Text style={[styles.headerText, styles.timeColumn]}>Time</Text>
+      </View>
 
-      <FlatList
-        data={results}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => (
-          <View style={styles.card}>
-            <Text style={styles.rank}>
+      {sortedRows.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyText}>
+            No team challenge result found yet.
+          </Text>
+        </View>
+      ) : (
+        sortedRows.map((row, index) => (
+          <View key={row.teamDiscriminator} style={styles.rowCard}>
+            <Text style={[styles.rankText, styles.rankColumn]}>
               #{index + 1}
             </Text>
 
-            <View style={{ flex: 1 }}>
-              <Text style={styles.name}>
-                {item.username}
-              </Text>
-
-              <Text style={styles.activity}>
-                {item.activityName}
-              </Text>
+            <View style={styles.teamColumn}>
+              <Text style={styles.teamName}>{row.teamName}</Text>
+              <Text style={styles.teamCode}>{row.teamDiscriminator}</Text>
             </View>
 
-            <View style={{ alignItems: "center" }}>
-              <Text style={styles.score}>
-                {item.score}
-              </Text>
+            <Text style={[styles.completedText, styles.completedColumn]}>
+              {row.completedCount}/{row.totalActivities}
+            </Text>
 
-              <TouchableOpacity
-                onPress={() => handleDelete(item.id)}
-                style={styles.deleteButton}
-              >
-                <Text style={styles.deleteText}>
-                  Delete
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={[styles.timeText, styles.timeColumn]}>
+              {formatTime(row.totalTimeSeconds)}
+            </Text>
           </View>
-        )}
-      />
-    </View>
+        ))
+      )}
+
+      <Pressable style={styles.refreshButton} onPress={loadLeaderboard}>
+        <Text style={styles.refreshButtonText}>Refresh Leaderboard</Text>
+      </Pressable>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    backgroundColor: colors.background,
   },
 
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  content: {
+    padding: 20,
+    paddingBottom: 40,
   },
 
   title: {
+    color: colors.text,
     fontSize: 30,
-    fontWeight: "bold",
+    fontWeight: "900",
     marginBottom: 10,
   },
 
-  count: {
-    marginBottom: 20,
-    color: "gray",
+  subtitle: {
+    color: colors.mutedText,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 22,
   },
 
-  card: {
+  tableHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#f2f2f2",
-    padding: 15,
-    borderRadius: 12,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
     marginBottom: 12,
   },
 
-  rank: {
-    fontSize: 20,
-    fontWeight: "bold",
-    width: 50,
+  headerText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "900",
   },
 
-  name: {
-    fontSize: 18,
-    fontWeight: "600",
-  },
-
-  activity: {
-    color: "gray",
-  },
-
-  score: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#007AFF",
-  },
-
-  deleteButton: {
-    marginTop: 8,
-    backgroundColor: "red",
+  rowCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.card,
+    borderRadius: 18,
+    paddingVertical: 16,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: 12,
   },
 
-  deleteText: {
-    color: "white",
-    fontWeight: "bold",
+  rankColumn: {
+    width: "14%",
+  },
+
+  teamColumn: {
+    width: "42%",
+  },
+
+  completedColumn: {
+    width: "22%",
+    textAlign: "center",
+  },
+
+  timeColumn: {
+    width: "22%",
+    textAlign: "right",
+  },
+
+  rankText: {
+    color: colors.text,
+    fontSize: 18,
+    fontWeight: "900",
+  },
+
+  teamName: {
+    color: colors.text,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+
+  teamCode: {
+    color: colors.mutedText,
+    fontSize: 12,
+    marginTop: 4,
+  },
+
+  completedText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: "900",
+  },
+
+  timeText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: "800",
+  },
+
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+
+  emptyText: {
+    color: colors.mutedText,
+    fontSize: 15,
+  },
+
+  refreshButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 15,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 18,
+  },
+
+  refreshButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: "900",
   },
 });

@@ -1,15 +1,16 @@
+import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultLocal } from "@/services/resultService";
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
-  Pressable,
+  Alert, Image, Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View,
-} from 'react-native';
+  View
+} from "react-native";
 
 import { colors } from '@/constants/Colors';
 
@@ -42,6 +43,8 @@ export default function ParachuteScreen() {
   const [designDescription, setDesignDescription] = useState('');
   const [prediction, setPrediction] = useState('');
   const [reflection, setReflection] = useState('');
+
+  const parachuteInstruction = require("@/assets/images/parachute-instruction.png");
 
   const [calculatedResult, setCalculatedResult] =
     useState<CalculationResult | null>(null);
@@ -249,7 +252,7 @@ export default function ParachuteScreen() {
     });
   };
 
-  const saveResult = () => {
+  const saveResult = async () => {
     if (!calculatedResult) {
       Alert.alert('No calculation', 'Please calculate the result first.');
       return;
@@ -291,6 +294,10 @@ export default function ParachuteScreen() {
       createdAt: new Date().toISOString(),
     };
 
+    await saveFullResultLocal(result);
+
+    await markActivityCompleted("parachute");
+
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));
   };
 
@@ -304,6 +311,75 @@ export default function ParachuteScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Parachute Drop Challenge</Text>
+
+      <View style={styles.card}>
+
+        <Text style={styles.sectionTitle}>Experiment Equipment</Text>
+
+        <Text style={styles.instructionText}>
+          •	Mobile phone with STEMM Lab app
+        </Text>
+
+        <Text style={styles.instructionText}>
+          •	Small toy (e.g. army toy soldier)
+        </Text>
+
+        <Text style={styles.instructionText}>
+          •	Table or elevated surface
+        </Text>
+
+        <Text style={styles.instructionText}>
+          •	Paper or plastic
+        </Text>
+
+        <Text style={styles.instructionText}>
+          •	String
+        </Text>
+
+        <Text style={styles.instructionText}>
+          •	Scissors
+        </Text>
+
+        <Text style={styles.instructionText}>
+          •	Tape
+        </Text>
+
+        <Text style={styles.sectionTitle}>Experiment Instruction</Text>
+
+        <Text style={styles.instructionText}>
+          1. Drop the toy without a parachute and record the fall (baseline test).
+        </Text>
+
+        <Text style={styles.instructionText}>
+          2. Build a parachute using paper/plastic, string, tape and scissors.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          3. Drop the toy from the same height and record the slow-motion video.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          4. Mark drop, impact, bounce and stop timestamps in the app.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          5. Review final velocity, acceleration, drag force and landing g-force.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          6. Redesign and test up to three prototypes within 20 minutes.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          7. Upload results and write team reflections.
+        </Text>
+
+        <Image
+          source={parachuteInstruction}
+          style={styles.sketchImage}
+          resizeMode="contain"
+        />
+      </View>
 
       <Text style={styles.subtitle}>
         Upload a slow-motion video, press Play when ready, mark the drop,
@@ -524,6 +600,7 @@ export default function ParachuteScreen() {
 }
 
 const styles = StyleSheet.create({
+
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -751,5 +828,19 @@ const styles = StyleSheet.create({
   infoText: {
     color: colors.mutedText,
     lineHeight: 22,
+  },
+
+  instructionText: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+
+  sketchImage: {
+    width: "100%",
+    height: 240,
+    marginTop: 16,
+    borderRadius: 18,
   },
 });

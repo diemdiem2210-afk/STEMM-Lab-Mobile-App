@@ -1,7 +1,10 @@
+import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultLocal } from "@/services/resultService";
 import { Accelerometer } from 'expo-sensors';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,8 +27,10 @@ export default function BreathingScreen() {
   const [durationSeconds, setDurationSeconds] = useState(0);
   const [prediction, setPrediction] = useState('');
   const [breathCount, setBreathCount] = useState(0);
-  const [breathsPerMinute, setBreathsPerMinute] = useState(0);
+
   const [reflection, setReflection] = useState('');
+
+  const breathingInstruction = require("@/assets/images/breathing-instruction.png");
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastPeakTimeRef = useRef(0);
@@ -33,16 +38,16 @@ export default function BreathingScreen() {
   const breathCountRef = useRef(0);
 
   const diagnosis = useMemo(() => {
-    if (breathsPerMinute === 0) {
+    if (breathCount === 0) {
       return 'Not measured yet';
     }
 
     if (testType === 'resting') {
-      if (breathsPerMinute < 12) {
+      if (breathCount < 12) {
         return 'Slow breathing';
       }
 
-      if (breathsPerMinute <= 20) {
+      if (breathCount <= 20) {
         return 'Normal breathing';
       }
 
@@ -50,27 +55,27 @@ export default function BreathingScreen() {
     }
 
     if (testType === 'jogging') {
-      if (breathsPerMinute < 18) {
+      if (breathCount < 18) {
         return 'Low recovery breathing';
       }
 
-      if (breathsPerMinute <= 30) {
+      if (breathCount <= 30) {
         return 'Normal after jogging';
       }
 
       return 'Heavy breathing';
     }
 
-    if (breathsPerMinute < 25) {
+    if (breathCount < 25) {
       return 'Low recovery breathing';
     }
 
-    if (breathsPerMinute <= 40) {
+    if (breathCount <= 40) {
       return 'Normal after jumping';
     }
 
     return 'Heavy breathing';
-  }, [breathsPerMinute, testType]);
+  }, [breathCount, testType]);
 
   const diagnosisColor = useMemo(() => {
     if (diagnosis.includes('Normal')) return colors.success;
@@ -90,9 +95,9 @@ export default function BreathingScreen() {
         const magnitude = Math.sqrt(x * x + y * y + z * z);
         const chestMovement = Math.abs(magnitude - 1);
 
-        const isBreathPeak = chestMovement > 0.008;
+        const isBreathPeak = chestMovement > 0.02;
         const now = Date.now();
-        const enoughGap = now - lastPeakTimeRef.current > 1200;
+        const enoughGap = now - lastPeakTimeRef.current > 2000;
 
         if (isBreathPeak && !wasHighRef.current && enoughGap) {
           wasHighRef.current = true;
@@ -106,8 +111,6 @@ export default function BreathingScreen() {
           const bpm = Math.round(
             (breathCountRef.current / currentDuration) * 60
           );
-
-          setBreathsPerMinute(bpm);
         }
 
         if (!isBreathPeak) {
@@ -131,15 +134,13 @@ export default function BreathingScreen() {
 
     const finalDuration = Math.max(durationSeconds, 1);
 
-    setBreathsPerMinute(
-      Math.round((breathCountRef.current / finalDuration) * 60)
-    );
+
   };
 
   const startMeasurement = () => {
     setDurationSeconds(0);
     setBreathCount(0);
-    setBreathsPerMinute(0);
+
 
     breathCountRef.current = 0;
     lastPeakTimeRef.current = 0;
@@ -155,11 +156,6 @@ export default function BreathingScreen() {
       setDurationSeconds((previous) => {
         const next = previous + 1;
 
-        if (breathCountRef.current > 0) {
-          setBreathsPerMinute(
-            Math.round((breathCountRef.current / next) * 60)
-          );
-        }
 
         if (next >= TEST_DURATION_SECONDS) {
           setTimeout(stopMeasurement, 0);
@@ -170,7 +166,7 @@ export default function BreathingScreen() {
     }, 1000);
   };
 
-  const saveResult = () => {
+  const saveResult = async () => {
     if (durationSeconds === 0) {
       Alert.alert('No result', 'Please complete a breathing test first.');
       return;
@@ -183,12 +179,15 @@ export default function BreathingScreen() {
       predictedBreathsPerMinute: prediction,
       breathCount,
       durationSeconds,
-      breathsPerMinute,
       diagnosis,
-      outcome: `${breathsPerMinute} breaths per minute`,
+
       reflection,
       createdAt: new Date().toISOString(),
     };
+
+    await saveFullResultLocal(result);
+
+    await markActivityCompleted("breathing");
 
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));
   };
@@ -196,6 +195,55 @@ export default function BreathingScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Breathing Pace Trainer</Text>
+      <View style={styles.card}>
+
+        <Text style={styles.sectionTitle}>Experiment Equipment</Text>
+
+        <Text style={styles.instructionText}>
+          •	Mobile phone with STEMM Lab app
+        </Text>
+
+        <Text style={styles.instructionText}>
+          •	Flat surface or mat
+        </Text>
+
+        <Text style={styles.sectionTitle}>Experiment Instruction</Text>
+
+        <Text style={styles.instructionText}>
+          1.	Place the phone gently on the chest.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          2.	Record breathing at rest.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          3.	Perform light exercise.
+        </Text>
+
+        <Text style={styles.instructionText}>
+              •	Jog one minute on the spot
+        </Text>
+
+        <Text style={styles.instructionText}>
+          	  •	100 star jump
+        </Text>
+
+        <Text style={styles.instructionText}>
+          4.	Record breathing again and compare results.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          Rotate for each team member
+        </Text>
+
+        <Image
+          source={breathingInstruction}
+          style={styles.sketchImage}
+          resizeMode="contain"
+        />
+      </View>
+
 
       <Text style={styles.subtitle}>
         Place the phone gently on the chest. The app counts breathing movement
@@ -494,5 +542,19 @@ const styles = StyleSheet.create({
   infoText: {
     color: colors.mutedText,
     lineHeight: 22,
+  },
+
+  instructionText: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+
+  sketchImage: {
+    width: "100%",
+    height: 240,
+    marginTop: 16,
+    borderRadius: 18,
   },
 });

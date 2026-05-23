@@ -1,6 +1,9 @@
+import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultLocal } from "@/services/resultService";
 import { useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -62,6 +65,8 @@ export default function HandFanScreen() {
   const [actualAngle, setActualAngle] = useState('');
   const [observation, setObservation] = useState('');
 
+  const fanInstruction = require("@/assets/images/fan-instruction.png");
+
   const selectedMaterial = useMemo(() => {
     return (
       materials.find((material) => material.id === selectedMaterialId) ??
@@ -114,7 +119,7 @@ export default function HandFanScreen() {
     return `Prediction was not close. Difference: ${difference.toFixed(1)}°`;
   }, [predictedAngle, actualAngle]);
 
-  const saveResult = () => {
+  const saveResult = async () => {
     if (!actualAngle) {
       Alert.alert('Missing result', 'Please enter the actual bend angle first.');
       return;
@@ -136,13 +141,68 @@ export default function HandFanScreen() {
       observation,
       createdAt: new Date().toISOString(),
     };
-
+    await saveFullResultLocal(result);
+    await markActivityCompleted("hand-fan");
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Hand Fan Challenge</Text>
+
+      <View style={styles.card}>
+      
+        <Text style={styles.sectionTitle}>Experiment Equipment</Text>
+      
+          <Text style={styles.instructionText}>
+                •	Paper and cardboard
+          </Text>
+
+          <Text style={styles.instructionText}>
+                •	Scissors
+          </Text>
+
+          <Text style={styles.instructionText}>
+                •	Mobile phone
+          </Text>
+
+          <Text style={styles.instructionText}>
+                •	Sticky Tape
+          </Text>
+
+          <Text style={styles.instructionText}>
+                •	STEMM Mobile App
+          </Text>
+      
+      
+        <Text style={styles.sectionTitle}>Experiment Instructions</Text>
+      
+          <Text style={styles.instructionText}>
+                1.	Stand paper upright on a table.
+          </Text>
+      
+          <Text style={styles.instructionText}>
+                2.	Fan air from 30 cm away.
+          </Text>
+      
+          <Text style={styles.instructionText}>
+                3.	Observe and record movement.
+          </Text>
+
+          <Text style={styles.instructionText}>
+                4.	Repeat with different fan designs and fan distance (15cm, 30, 45cm)
+          </Text>
+      
+          <Text style={styles.instructionText}>
+                5.	Repeat with a cardboard instead of a paper vertical.
+          </Text>
+
+          <Image
+                source={fanInstruction}
+                style={styles.sketchImage}
+                resizeMode="contain"
+          />
+      </View>
 
       <Text style={styles.subtitle}>
         Test how air movement affects paper and cardboard. Select the material,
@@ -481,5 +541,19 @@ const styles = StyleSheet.create({
   infoText: {
     color: colors.mutedText,
     lineHeight: 22,
+  },
+
+  instructionText: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+
+  sketchImage: {
+    width: "100%",
+    height: 240,
+    marginTop: 16,
+    borderRadius: 18,
   },
 });

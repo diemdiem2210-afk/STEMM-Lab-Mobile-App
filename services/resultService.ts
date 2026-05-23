@@ -1,61 +1,91 @@
-import {
-  addDoc,
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-} from "firebase/firestore";
+import * as SQLite from "expo-sqlite";
 
-import { ActivityResult } from "../models/resultModel";
-import { db } from "./firebase";
+export type SavedActivityResult = {
+  id?: number;
+  activityId: string;
+  activityName: string;
+  createdAt: string;
 
-export const saveResultToFirestore = async (
-  result: ActivityResult
-) => {
-  try {
-    const docRef = await addDoc(collection(db, "results"), result);
-    return docRef.id;
-  } catch (error) {
-    console.error("Save result error:", error);
-    throw error;
-  }
+  // This stores the full original result object from each activity
+  [key: string]: any;
 };
 
-export const addFakeResults = async () => {
-  try {
-    for (let i = 1; i <= 21; i++) {
-      await addDoc(collection(db, "results"), {
-        username: `Test User ${i}`,
-        activityName: "Tap Dominant",
-        score: Math.floor(Math.random() * 100),
-      });
-    }
+const db = SQLite.openDatabaseSync("stemm_lab.db");
 
-    console.log("21 fake results added");
-  } catch (error) {
-    console.error("Fake result error:", error);
-  }
-};
-
-export const getTopResults = async () => {
-  try {
-    await addFakeResults();
-
-    const q = query(
-      collection(db, "results"),
-      orderBy("score", "desc"),
-      limit(20)
+export const setupLocalResultDatabase = async () => {
+  await db.execAsync(`
+    CREATE TABLE IF NOT EXISTS activity_results (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      activityId TEXT NOT NULL,
+      activityName TEXT NOT NULL,
+      fullResultJson TEXT NOT NULL,
+      createdAt TEXT NOT NULL
     );
+  `);
+};
 
-    const snapshot = await getDocs(q);
+export const saveFullResultLocal = async (
+  result: SavedActivityResult
+) => {
+  await setupLocalResultDatabase();
 
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-  } catch (error) {
-    console.error("Get top results error:", error);
-    throw error;
-  }
+  await db.runAsync(
+    `
+    INSERT INTO activity_results (
+      activityId,
+      activityName,
+      fullResultJson,
+      createdAt
+    )
+    VALUES (?, ?, ?, ?)
+    `,
+    [
+      result.activityId,
+      result.activityName,
+      JSON.stringify(result),
+      result.createdAt,
+    ]
+  );
+};
+
+export const getFullResultsLocal = async () => {
+  await setupLocalResultDatabase();
+
+  const rows = await db.getAllAsync<{
+    id: number;
+    activityId: string;
+    activityName: string;
+    fullResultJson: string;
+    createdAt: string;
+  }>(`
+    SELECT *
+    FROM activity_results
+    ORDER BY createdAt DESC
+    LIMIT 50
+  `);
+
+  return rows.map((row) => ({
+    id: row.id,
+    ...JSON.parse(row.fullResultJson),
+  }));
+};
+
+export const deleteFullResultLocal = async (id: number) => {
+  await setupLocalResultDatabase();
+
+  await db.runAsync(
+    `
+    DELETE FROM activity_results
+    WHERE id = ?
+    `,
+    [id]
+  );
+};
+
+export const clearAllFullResultsLocal = async () => {
+  await setupLocalResultDatabase();
+
+  await db.runAsync(`
+    DELETE FROM activity_results
+  `);
 };

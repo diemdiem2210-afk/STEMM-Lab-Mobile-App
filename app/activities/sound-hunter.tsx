@@ -1,24 +1,27 @@
+import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultLocal } from "@/services/resultService";
 import {
-    AudioModule,
-    RecordingPresets,
-    useAudioRecorder,
-    useAudioRecorderState,
-} from 'expo-audio';
-import * as Location from 'expo-location';
-import { useEffect, useMemo, useState } from 'react';
+  AudioModule,
+  RecordingPresets,
+  useAudioRecorder,
+  useAudioRecorderState,
+} from "expo-audio";
+import * as Location from "expo-location";
+import { useEffect, useMemo, useState } from "react";
 import {
-    Alert,
-    Linking,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
-} from 'react-native';
+  Alert,
+  Image,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
-import { colors } from '@/constants/Colors';
+import { colors } from "@/constants/Colors";
 
 type SoundRisk = {
   label: string;
@@ -29,26 +32,26 @@ type SoundRisk = {
 function getSoundRisk(db: number): SoundRisk {
   if (db < 60) {
     return {
-      label: 'Safe',
+      label: "Safe",
       color: colors.success,
-      advice: 'This level is generally safe for normal classroom activity.',
+      advice: "This level is generally safe for normal classroom activity.",
     };
   }
 
   if (db < 85) {
     return {
-      label: 'Moderate',
+      label: "Moderate",
       color: colors.warning,
       advice:
-        'This level may affect concentration if it continues for a long time.',
+        "This level may affect concentration if it continues for a long time.",
     };
   }
 
   return {
-    label: 'High Risk',
+    label: "High Risk",
     color: colors.error,
     advice:
-      'This level may be unsafe for long exposure. Consider reducing noise.',
+      "This level may be unsafe for long exposure. Consider reducing noise.",
   };
 }
 
@@ -60,46 +63,50 @@ export default function SoundHunterScreen() {
 
   const recorderState = useAudioRecorderState(audioRecorder, 500);
 
-  const [manualSoundLevel, setManualSoundLevel] = useState('');
-  const [locationNote, setLocationNote] = useState('');
-  const [reflection, setReflection] = useState('');
+  const [manualSoundLevel, setManualSoundLevel] = useState("");
+  const [locationNote, setLocationNote] = useState("");
+  const [reflection, setReflection] = useState("");
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [maxDetectedDb, setMaxDetectedDb] = useState(0);
+
+  const soundInstruction = require("@/assets/images/sound-instruction.png");
 
   const metering = recorderState.metering;
 
   const estimatedDb = useMemo(() => {
-    if (typeof metering === 'number') {
-      return Math.max(0, Math.round(100 + metering));
+    let currentDb = 0;
+
+    if (typeof metering === "number") {
+      currentDb = Math.max(0, Math.round(100 + metering));
+    } else {
+      const manual = Number(manualSoundLevel);
+
+      if (!Number.isNaN(manual) && manual > 0) {
+        currentDb = manual;
+      }
     }
 
-    const manual = Number(manualSoundLevel);
-
-    if (!Number.isNaN(manual) && manual > 0) {
-      return manual;
-    }
-
-    return 0;
+    return currentDb;
   }, [metering, manualSoundLevel]);
 
   const risk = getSoundRisk(estimatedDb);
 
   useEffect(() => {
-    return () => {
-      if (isRecording) {
-        audioRecorder.stop();
-      }
-    };
-  }, [audioRecorder, isRecording]);
+    if (estimatedDb > maxDetectedDb) {
+      setMaxDetectedDb(estimatedDb);
+    }
+  }, [estimatedDb, maxDetectedDb]);
+
 
   const requestLocation = async () => {
     const permission = await Location.requestForegroundPermissionsAsync();
 
-    if (permission.status !== 'granted') {
+    if (permission.status !== "granted") {
       Alert.alert(
-        'Location permission needed',
-        'Please allow location access to tag the experiment location.'
+        "Location permission needed",
+        "Please allow location access to tag the experiment location."
       );
       return;
     }
@@ -115,8 +122,8 @@ export default function SoundHunterScreen() {
 
     if (!permission.granted) {
       Alert.alert(
-        'Microphone permission needed',
-        'Please allow microphone access to measure sound level.'
+        "Microphone permission needed",
+        "Please allow microphone access to measure sound level."
       );
       return;
     }
@@ -131,28 +138,38 @@ export default function SoundHunterScreen() {
       isMeteringEnabled: true,
     });
 
+    setMaxDetectedDb(0);
+
     await audioRecorder.record();
     setIsRecording(true);
   };
 
   const stopRecording = async () => {
-    await audioRecorder.stop();
-    setIsRecording(false);
+    try {
+      if (isRecording) {
+        await audioRecorder.stop();
+      }
+    } catch (error) {
+      console.log("Stop recording error:", error);
+    } finally {
+      setIsRecording(false);
+    }
   };
 
-  const saveResult = () => {
+  const saveResult = async () => {
     if (!estimatedDb || estimatedDb <= 0) {
       Alert.alert(
-        'Missing sound level',
-        'Please record sound or enter a manual dB value first.'
+        "Missing sound level",
+        "Please record sound or enter a manual dB value first."
       );
       return;
     }
 
     const result = {
-      activityId: 'sound-hunter',
-      activityName: 'Sound Pollution Hunter',
+      activityId: "sound-hunter",
+      activityName: "Sound Pollution Hunter",
       soundLevelDb: estimatedDb,
+      maximumDetectedDb: Number(maxDetectedDb.toFixed(1)),
       riskLevel: risk.label,
       locationNote,
       latitude,
@@ -161,12 +178,10 @@ export default function SoundHunterScreen() {
       createdAt: new Date().toISOString(),
     };
 
-    Alert.alert(
-        'Saved Result',
-        JSON.stringify(result, null, 2)
-    );
+    await saveFullResultLocal(result);
+    await markActivityCompleted("sound-hunter");
 
-    
+    Alert.alert("Saved Result", JSON.stringify(result, null, 2));
   };
 
   const openMap = () => {
@@ -175,7 +190,7 @@ export default function SoundHunterScreen() {
     }
 
     const url =
-      Platform.OS === 'ios'
+      Platform.OS === "ios"
         ? `https://maps.apple.com/?ll=${latitude},${longitude}`
         : `geo:${latitude},${longitude}?q=${latitude},${longitude}(Sound Measurement Location)`;
 
@@ -186,6 +201,35 @@ export default function SoundHunterScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Sound Pollution Hunter</Text>
 
+      <View style={styles.card}>
+        <Text style={styles.sectionTitle}>Experiment Equipment</Text>
+
+        <Text style={styles.instructionText}>
+          • Mobile phone with STEMM Lab app
+        </Text>
+
+        <Text style={styles.sectionTitle}>Experiment Instructions</Text>
+
+        <Text style={styles.instructionText}>
+          1. Measure noise from different actions, such as dropping objects,
+          talking, walking, or stamping your feet.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          2. Record sound levels and locations.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          3. Map loud and quiet zones.
+        </Text>
+
+        <Image
+          source={soundInstruction}
+          style={styles.sketchImage}
+          resizeMode="contain"
+        />
+      </View>
+
       <Text style={styles.subtitle}>
         Measure classroom noise, tag the location, and reflect on whether the
         sound level is safe.
@@ -195,8 +239,12 @@ export default function SoundHunterScreen() {
         <Text style={styles.sectionTitle}>Live Sound Reading</Text>
 
         <View style={styles.meterBox}>
-          <Text style={styles.dbNumber}>{estimatedDb || '--'}</Text>
+          <Text style={styles.dbNumber}>{estimatedDb || "--"}</Text>
           <Text style={styles.dbUnit}>dB estimate</Text>
+
+          <Text style={styles.maxDbText}>
+            Maximum Detected: {maxDetectedDb.toFixed(1)} dB
+          </Text>
         </View>
 
         <View style={[styles.riskBadge, { borderColor: risk.color }]}>
@@ -240,16 +288,6 @@ export default function SoundHunterScreen() {
       <View style={styles.card}>
         <Text style={styles.sectionTitle}>Experiment Details</Text>
 
-        <Text style={styles.label}>Manual Sound Level (dB)</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Example: 65"
-          placeholderTextColor={colors.mutedText}
-          keyboardType="numeric"
-          value={manualSoundLevel}
-          onChangeText={setManualSoundLevel}
-        />
-
         <Text style={styles.label}>Activity / Location Note</Text>
         <TextInput
           style={styles.input}
@@ -266,7 +304,7 @@ export default function SoundHunterScreen() {
         <Text style={styles.locationText}>
           {latitude && longitude
             ? `GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
-            : 'GPS not tagged yet'}
+            : "GPS not tagged yet"}
         </Text>
 
         {latitude && longitude && (
@@ -318,7 +356,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.text,
     fontSize: 30,
-    fontWeight: '800',
+    fontWeight: "800",
     marginBottom: 8,
   },
 
@@ -341,7 +379,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.primary,
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: "800",
     marginBottom: 16,
   },
 
@@ -349,7 +387,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     borderRadius: 20,
     padding: 24,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -357,7 +395,7 @@ const styles = StyleSheet.create({
   dbNumber: {
     color: colors.text,
     fontSize: 52,
-    fontWeight: '900',
+    fontWeight: "900",
   },
 
   dbUnit: {
@@ -366,8 +404,16 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 
+  maxDbText: {
+    color: colors.primary,
+    fontSize: 16,
+    fontWeight: "800",
+    marginTop: 12,
+    textAlign: "center",
+  },
+
   riskBadge: {
-    alignSelf: 'center',
+    alignSelf: "center",
     borderWidth: 1,
     borderRadius: 999,
     paddingVertical: 8,
@@ -376,19 +422,19 @@ const styles = StyleSheet.create({
   },
 
   riskText: {
-    fontWeight: '800',
+    fontWeight: "800",
     fontSize: 15,
   },
 
   advice: {
     color: colors.mutedText,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: 22,
     marginTop: 12,
   },
 
   buttonRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 12,
     marginTop: 18,
   },
@@ -397,7 +443,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
 
   primaryButton: {
@@ -414,7 +460,7 @@ const styles = StyleSheet.create({
 
   buttonText: {
     color: colors.background,
-    fontWeight: '800',
+    fontWeight: "800",
     fontSize: 15,
   },
 
@@ -428,7 +474,7 @@ const styles = StyleSheet.create({
   label: {
     color: colors.text,
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 8,
     marginTop: 12,
   },
@@ -445,7 +491,7 @@ const styles = StyleSheet.create({
 
   textArea: {
     minHeight: 100,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
 
   secondaryButton: {
@@ -453,14 +499,14 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     borderRadius: 14,
     paddingVertical: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 16,
   },
 
   secondaryButtonText: {
     color: colors.primary,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 
   locationText: {
@@ -480,7 +526,7 @@ const styles = StyleSheet.create({
   mapTitle: {
     color: colors.primary,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
     marginBottom: 6,
   },
 
@@ -494,14 +540,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success,
     paddingVertical: 15,
     borderRadius: 14,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 20,
   },
 
   saveButtonText: {
     color: colors.background,
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: "900",
   },
 
   infoCard: {
@@ -515,12 +561,26 @@ const styles = StyleSheet.create({
   infoTitle: {
     color: colors.text,
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "800",
     marginBottom: 10,
   },
 
   infoText: {
     color: colors.mutedText,
     lineHeight: 22,
+  },
+
+  instructionText: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+
+  sketchImage: {
+    width: "100%",
+    height: 240,
+    marginTop: 16,
+    borderRadius: 18,
   },
 });

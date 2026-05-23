@@ -1,7 +1,10 @@
+import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultLocal } from "@/services/resultService";
 import { Accelerometer } from 'expo-sensors';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,6 +26,8 @@ export default function StretchScreen() {
   const [currentVibrationMm, setCurrentVibrationMm] = useState(0);
   const [maxVibrationMm, setMaxVibrationMm] = useState(0);
   const [averageVibrationMm, setAverageVibrationMm] = useState(0);
+
+  const stretchInstruction = require("@/assets/images/stretch-instruction.png");
 
   const vibrationSamplesRef = useRef<number[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -108,7 +113,7 @@ export default function StretchScreen() {
     }
   };
 
-  const saveResult = () => {
+  const saveResult = async () => {
     if (durationSeconds === 0) {
       Alert.alert('No result', 'Please start and stop a movement test first.');
       return;
@@ -128,12 +133,57 @@ export default function StretchScreen() {
       createdAt: new Date().toISOString(),
     };
 
+    await saveFullResultLocal(result);
+
+    await markActivityCompleted("stretch");
+
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Stretch Performance Lab</Text>
+
+      <View style={styles.card}>
+      
+        <Text style={styles.sectionTitle}>Experiment Equipment</Text>
+      
+          <Text style={styles.instructionText}>
+                •	Open space to move safely.
+          </Text>
+
+          <Text style={styles.instructionText}>
+                •	Mobile phone with STEMM Lab app
+          </Text>
+      
+        <Text style={styles.sectionTitle}>Experiment Instructions</Text>
+      
+          <Text style={styles.instructionText}>
+                1.	Hold the phone firmly in one hand. Activate the App vibration sensor.
+          </Text>
+      
+          <Text style={styles.instructionText}>
+                2.	Perform guided movement slowly as shown in the app. Record the vibration.
+          </Text>
+      
+          <Text style={styles.instructionText}>
+                3.	Repeat the activity with vibration feedback enabled.
+          </Text>
+
+          <Text style={styles.instructionText}>
+                4.	Review speed, smoothness, and range-of-motion data.
+          </Text>
+
+          <Text style={styles.instructionText}>
+                5.	Upload results and reflect as a group.
+          </Text>
+
+          <Image
+                source={stretchInstruction}
+                style={styles.sketchImage}
+                resizeMode="contain"
+          />
+      </View>
 
       <Text style={styles.subtitle}>
         Hold the phone during a stretching movement. The app estimates vibration
@@ -440,5 +490,19 @@ const styles = StyleSheet.create({
   durationText: {
     color: colors.text,
     fontWeight: '800',
+  },
+
+  instructionText: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+
+  sketchImage: {
+    width: "100%",
+    height: 240,
+    marginTop: 16,
+    borderRadius: 18,
   },
 });

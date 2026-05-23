@@ -1,7 +1,10 @@
+import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultLocal } from "@/services/resultService";
 import { Accelerometer } from 'expo-sensors';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +21,8 @@ export default function EarthquakeScreen() {
   const [maxMovement, setMaxMovement] = useState(0);
   const [designNote, setDesignNote] = useState('');
   const [reflection, setReflection] = useState('');
+
+  const earthquakeInstruction = require("@/assets/images/earthquake-instruction.png");
 
   const stability = useMemo(() => {
     if (maxMovement < 1.2) return 'Very Stable';
@@ -63,7 +68,7 @@ export default function EarthquakeScreen() {
     setIsMeasuring(false);
   };
 
-  const saveResult = () => {
+  const saveResult = async () => {
     if (maxMovement <= 0) {
       Alert.alert(
         'No sensor data',
@@ -83,12 +88,52 @@ export default function EarthquakeScreen() {
       createdAt: new Date().toISOString(),
     };
 
+    await saveFullResultLocal(result);
+
+    await markActivityCompleted("earthquake");
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.title}>Earthquake Structure</Text>
+
+      <View style={styles.card}>
+      
+        <Text style={styles.sectionTitle}>Experiment Equipment</Text>
+      
+          <Text style={styles.instructionText}>
+                •	Cardboard, paper, scissors, sticky tape, plastic/paper cups.
+          </Text>
+
+          <Text style={styles.instructionText}>
+                •	Mobile phone with vibration sensor
+          </Text>
+      
+        <Text style={styles.sectionTitle}>Experiment Instructions</Text>
+      
+          <Text style={styles.instructionText}>
+                1.	Build an anti-vibration layer, by folding paper/cardboard.
+          </Text>
+      
+          <Text style={styles.instructionText}>
+                2.	Place a flat cardboard platform on top.
+          </Text>
+      
+          <Text style={styles.instructionText}>
+                3.	Place the phone in the centre and activate vibration mode on the STEMM App.
+          </Text>
+
+          <Text style={styles.instructionText}>
+                4.	Modify the structure to reduce movement (e.g. more pillars, more folds, etc)
+          </Text>
+
+          <Image
+                source={earthquakeInstruction}
+                style={styles.sketchImage}
+                resizeMode="contain"
+          />
+      </View>
 
       <Text style={styles.subtitle}>
         Place the phone on your structure and use the accelerometer to measure
@@ -328,5 +373,19 @@ const styles = StyleSheet.create({
   infoText: {
     color: colors.mutedText,
     lineHeight: 22,
+  },
+
+  instructionText: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+
+  sketchImage: {
+    width: "100%",
+    height: 240,
+    marginTop: 16,
+    borderRadius: 18,
   },
 });

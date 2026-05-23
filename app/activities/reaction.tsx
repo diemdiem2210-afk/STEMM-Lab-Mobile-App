@@ -1,12 +1,15 @@
+import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultLocal } from "@/services/resultService";
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
 
 import { colors } from '@/constants/Colors';
@@ -39,6 +42,8 @@ export default function ReactionScreen() {
 
   const [memberName, setMemberName] = useState('');
   const [reflection, setReflection] = useState('');
+
+  const reactionInstruction = require("@/assets/images/reaction-instruction.png");
 
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [traceHand, setTraceHand] = useState<HandType>('dominant');
@@ -232,7 +237,7 @@ export default function ReactionScreen() {
     }
   };
 
-  const saveResult = () => {
+  const saveResult = async () => {
     const result = {
       activityId: 'reaction',
       activityName: 'Reaction Board Challenge',
@@ -251,6 +256,9 @@ export default function ReactionScreen() {
       createdAt: new Date().toISOString(),
     };
 
+    await saveFullResultLocal(result);
+
+    await markActivityCompleted("reacction");
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));
   };
 
@@ -261,6 +269,67 @@ export default function ReactionScreen() {
       scrollEnabled={scrollEnabled}
     >
       <Text style={styles.title}>Reaction Board</Text>
+
+      <View style={styles.card}>
+
+        <Text style={styles.sectionTitle}>Experiment Equipment</Text>
+
+        <Text style={styles.instructionText}>
+          •	Mobile phone with STEMM Lab app
+        </Text>
+
+        <Text style={styles.instructionText}>
+          •	Clear working space
+        </Text>
+
+        <Text style={styles.sectionTitle}>Experiment Instruction</Text>
+
+        <Text style={styles.instructionText}>
+          Phase 1 – Tap Reaction
+        </Text>
+
+        <Text style={styles.instructionText}>
+          1.	Tap the screen as soon as the hidden button appears.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          2.	Record reaction time.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          Phase 2 – Swap Hands
+        </Text>
+
+        <Text style={styles.instructionText}>
+          3. Repeat using the non-dominant hand.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          4. Compare results.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          Phase 3 – Tracing Challenge
+        </Text>
+
+        <Text style={styles.instructionText}>
+          5. Trace a moving shape on the screen.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          6. Review accuracy and delay.
+        </Text>
+
+        <Text style={styles.instructionText}>
+          Rotate through each team member
+        </Text>
+
+        <Image
+          source={reactionInstruction}
+          style={styles.sketchImage}
+          resizeMode="contain"
+        />
+      </View>
 
       <Text style={styles.subtitle}>
         Test reaction time, compare both hands, and follow a randomly moving
@@ -661,5 +730,19 @@ const styles = StyleSheet.create({
     color: colors.background,
     fontSize: 16,
     fontWeight: '900',
+  },
+
+  instructionText: {
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 22,
+    marginBottom: 10,
+  },
+
+  sketchImage: {
+    width: "100%",
+    height: 240,
+    marginTop: 16,
+    borderRadius: 18,
   },
 });
