@@ -1,5 +1,7 @@
 import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultCloud } from "@/services/firestoreResultService";
 import { saveFullResultLocal } from "@/services/resultService";
+import { getTeamProfile } from "@/services/teamProfileService";
 import {
   AudioModule,
   RecordingPresets,
@@ -165,7 +167,13 @@ export default function SoundHunterScreen() {
       return;
     }
 
+    const profile = await getTeamProfile();
+
     const result = {
+      uid: profile?.uid ?? "",
+      teamName: profile?.teamName ?? "",
+      teamDiscriminator: profile?.teamDiscriminator ?? "",
+
       activityId: "sound-hunter",
       activityName: "Sound Pollution Hunter",
       soundLevelDb: estimatedDb,
@@ -179,6 +187,7 @@ export default function SoundHunterScreen() {
     };
 
     await saveFullResultLocal(result);
+    await saveFullResultCloud(result);
     await markActivityCompleted("sound-hunter");
 
     Alert.alert("Saved Result", JSON.stringify(result, null, 2));

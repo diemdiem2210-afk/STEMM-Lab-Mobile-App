@@ -1,3 +1,9 @@
+import {
+  markActivityCompletedInFirestore,
+  resetChallengeInFirestore,
+  startChallengeInFirestore,
+} from "@/services/teamFirestoreService";
+import { getTeamProfile } from "@/services/teamProfileService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CHALLENGE_KEY = "stemm_challenge";
@@ -24,9 +30,14 @@ export const getChallengeState = async (): Promise<ChallengeState> => {
 };
 
 export const startChallenge = async () => {
+  const profile = await getTeamProfile();
+  const startedAt = profile?.uid
+    ? await startChallengeInFirestore(profile.uid)
+    : new Date().toISOString();
+
   const state: ChallengeState = {
     accepted: true,
-    startedAt: new Date().toISOString(),
+    startedAt,
     completedAt: null,
     completedActivityIds: [],
   };
@@ -36,6 +47,7 @@ export const startChallenge = async () => {
 };
 
 export const markActivityCompleted = async (activityId: string) => {
+  const profile = await getTeamProfile();
   const state = await getChallengeState();
 
   if (!state.accepted || state.completedAt) {
@@ -46,19 +58,30 @@ export const markActivityCompleted = async (activityId: string) => {
     new Set([...state.completedActivityIds, activityId])
   );
 
+  const completedAt =
+    completed.length >= TOTAL_ACTIVITIES ? new Date().toISOString() : null;
+
   const updated: ChallengeState = {
     ...state,
     completedActivityIds: completed,
-    completedAt:
-      completed.length >= TOTAL_ACTIVITIES
-        ? new Date().toISOString()
-        : null,
+    completedAt,
   };
 
   await AsyncStorage.setItem(CHALLENGE_KEY, JSON.stringify(updated));
+
+  if (profile?.uid) {
+    await markActivityCompletedInFirestore(profile.uid, activityId);
+  }
+
   return updated;
 };
 
 export const resetChallenge = async () => {
+  const profile = await getTeamProfile();
+
   await AsyncStorage.setItem(CHALLENGE_KEY, JSON.stringify(defaultState));
+
+  if (profile?.uid) {
+    await resetChallengeInFirestore(profile.uid);
+  }
 };

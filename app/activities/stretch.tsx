@@ -1,5 +1,7 @@
 import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultCloud } from "@/services/firestoreResultService";
 import { saveFullResultLocal } from "@/services/resultService";
+import { getTeamProfile } from "@/services/teamProfileService";
 import { Accelerometer } from 'expo-sensors';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -119,7 +121,13 @@ export default function StretchScreen() {
       return;
     }
 
+    const profile = await getTeamProfile();
+
     const result = {
+      uid: profile?.uid ?? "",
+      teamName: profile?.teamName ?? "",
+      teamDiscriminator: profile?.teamDiscriminator ?? "",
+      
       activityId: 'stretch',
       activityName: 'Human Performance Lab - Stretch Speed & Gracefulness',
       attemptName,
@@ -134,7 +142,7 @@ export default function StretchScreen() {
     };
 
     await saveFullResultLocal(result);
-
+    await saveFullResultCloud(result);
     await markActivityCompleted("stretch");
 
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));

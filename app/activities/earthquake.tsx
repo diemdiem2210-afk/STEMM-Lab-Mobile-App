@@ -1,5 +1,7 @@
 import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultCloud } from "@/services/firestoreResultService";
 import { saveFullResultLocal } from "@/services/resultService";
+import { getTeamProfile } from "@/services/teamProfileService";
 import { Accelerometer } from 'expo-sensors';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -77,7 +79,13 @@ export default function EarthquakeScreen() {
       return;
     }
 
+    const profile = await getTeamProfile();
+
     const result = {
+      uid: profile?.uid ?? "",
+      teamName: profile?.teamName ?? "",
+      teamDiscriminator: profile?.teamDiscriminator ?? "",
+
       activityId: 'earthquake',
       activityName: 'Earthquake-Resistant Structure',
       currentMovement: movement,
@@ -89,7 +97,7 @@ export default function EarthquakeScreen() {
     };
 
     await saveFullResultLocal(result);
-
+    await saveFullResultCloud(result);
     await markActivityCompleted("earthquake");
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));
   };

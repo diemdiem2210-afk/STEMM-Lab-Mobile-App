@@ -1,5 +1,7 @@
 import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultCloud } from "@/services/firestoreResultService";
 import { saveFullResultLocal } from "@/services/resultService";
+import { getTeamProfile } from "@/services/teamProfileService";
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useMemo, useState } from 'react';
@@ -258,7 +260,13 @@ export default function ParachuteScreen() {
       return;
     }
 
+    const profile = await getTeamProfile();
+
     const result = {
+      uid: profile?.uid ?? "",
+      teamName: profile?.teamName ?? "",
+      teamDiscriminator: profile?.teamDiscriminator ?? "",
+
       activityId: 'parachute',
       activityName: 'Parachute Drop Challenge',
       videoSelected: Boolean(pendingVideoUri || videoUri),
@@ -295,6 +303,7 @@ export default function ParachuteScreen() {
     };
 
     await saveFullResultLocal(result);
+    await saveFullResultCloud(result);
 
     await markActivityCompleted("parachute");
 

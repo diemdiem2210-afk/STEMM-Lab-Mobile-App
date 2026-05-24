@@ -1,10 +1,11 @@
+import { getTeamProfileFromFirestore } from "@/services/teamFirestoreService";
+import { getTeamProfile } from "@/services/teamProfileService";
 import { useEffect, useState } from 'react';
 
 import {
   ChallengeState,
-  getChallengeState,
   startChallenge,
-  TOTAL_ACTIVITIES,
+  TOTAL_ACTIVITIES
 } from '@/services/challengeService';
 import { Link } from 'expo-router';
 import {
@@ -44,7 +45,28 @@ export default function HomeScreen() {
   }, [challenge]);
 
   const loadChallenge = async () => {
-    const state = await getChallengeState();
+    const localProfile = await getTeamProfile();
+
+    if (!localProfile?.uid) {
+      setChallenge(null);
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const cloudProfile = await getTeamProfileFromFirestore(localProfile.uid);
+
+    if (!cloudProfile?.challengeAccepted) {
+      setChallenge(null);
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const state = {
+      accepted: true,
+      startedAt: cloudProfile.challengeStartedAt ?? null,
+      completedAt: cloudProfile.challengeCompletedAt ?? null,
+      completedActivityIds: cloudProfile.completedActivityIds ?? [],
+    };
 
     setChallenge(state);
 

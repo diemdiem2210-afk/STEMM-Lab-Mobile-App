@@ -1,5 +1,7 @@
 import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultCloud } from "@/services/firestoreResultService";
 import { saveFullResultLocal } from "@/services/resultService";
+import { getTeamProfile } from "@/services/teamProfileService";
 import { useMemo, useState } from 'react';
 import {
   Alert,
@@ -125,7 +127,14 @@ export default function HandFanScreen() {
       return;
     }
 
+    const profile = await getTeamProfile();
+
     const result = {
+
+      uid: profile?.uid ?? "",
+      teamName: profile?.teamName ?? "",
+      teamDiscriminator: profile?.teamDiscriminator ?? "",
+      
       activityId: 'hand-fan',
       activityName: 'Hand Fan Challenge',
       material: selectedMaterial.name,
@@ -142,6 +151,7 @@ export default function HandFanScreen() {
       createdAt: new Date().toISOString(),
     };
     await saveFullResultLocal(result);
+    await saveFullResultCloud(result);
     await markActivityCompleted("hand-fan");
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));
   };

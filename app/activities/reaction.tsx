@@ -1,5 +1,7 @@
 import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultCloud } from "@/services/firestoreResultService";
 import { saveFullResultLocal } from "@/services/resultService";
+import { getTeamProfile } from "@/services/teamProfileService";
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -238,7 +240,14 @@ export default function ReactionScreen() {
   };
 
   const saveResult = async () => {
+    const profile = await getTeamProfile();
+
+
     const result = {
+      uid: profile?.uid ?? "",
+      teamName: profile?.teamName ?? "",
+      teamDiscriminator: profile?.teamDiscriminator ?? "",
+      
       activityId: 'reaction',
       activityName: 'Reaction Board Challenge',
       memberName,
@@ -257,6 +266,7 @@ export default function ReactionScreen() {
     };
 
     await saveFullResultLocal(result);
+    await saveFullResultCloud(result);
 
     await markActivityCompleted("reacction");
     Alert.alert('Saved Result', JSON.stringify(result, null, 2));

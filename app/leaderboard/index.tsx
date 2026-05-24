@@ -8,10 +8,13 @@ import {
 } from "react-native";
 
 import { colors } from "@/constants/Colors";
-import { getChallengeState } from "@/services/challengeService";
-import { getTeamProfile } from "@/services/teamProfileService";
+import {
+  FirestoreTeamProfile,
+  getAllTeamProfilesFromFirestore,
+} from "@/services/teamFirestoreService";
 
 type TeamLeaderboardRow = {
+  uid: string;
   teamName: string;
   teamDiscriminator: string;
   completedCount: number;
@@ -27,32 +30,32 @@ export default function LeaderboardScreen() {
   }, []);
 
   const loadLeaderboard = async () => {
-    const profile = await getTeamProfile();
-    const challenge = await getChallengeState();
+    const teams = await getAllTeamProfilesFromFirestore();
 
-    if (!profile) {
-      setRows([]);
-      return;
-    }
+    const mappedRows = teams.map((team: FirestoreTeamProfile) => {
+      const startedAt = team.challengeStartedAt;
+      const completedAt = team.challengeCompletedAt;
 
-    const totalTimeSeconds =
-      challenge.startedAt && challenge.completedAt
-        ? Math.floor(
-            (new Date(challenge.completedAt).getTime() -
-              new Date(challenge.startedAt).getTime()) /
-              1000
-          )
-        : null;
+      const totalTimeSeconds =
+        startedAt && completedAt
+          ? Math.floor(
+              (new Date(completedAt).getTime() -
+                new Date(startedAt).getTime()) /
+                1000
+            )
+          : null;
 
-    const currentTeamRow: TeamLeaderboardRow = {
-      teamName: profile.teamName,
-      teamDiscriminator: profile.teamDiscriminator,
-      completedCount: challenge.completedActivityIds.length,
-      totalActivities: 7,
-      totalTimeSeconds,
-    };
+      return {
+        uid: team.uid,
+        teamName: team.teamName,
+        teamDiscriminator: team.teamDiscriminator,
+        completedCount: team.completedActivityIds?.length ?? 0,
+        totalActivities: 7,
+        totalTimeSeconds,
+      };
+    });
 
-    setRows([currentTeamRow]);
+    setRows(mappedRows);
   };
 
   const sortedRows = useMemo(() => {
@@ -65,22 +68,15 @@ export default function LeaderboardScreen() {
         return 0;
       }
 
-      if (a.totalTimeSeconds === null) {
-        return 1;
-      }
-
-      if (b.totalTimeSeconds === null) {
-        return -1;
-      }
+      if (a.totalTimeSeconds === null) return 1;
+      if (b.totalTimeSeconds === null) return -1;
 
       return a.totalTimeSeconds - b.totalTimeSeconds;
     });
   }, [rows]);
 
   const formatTime = (seconds: number | null) => {
-    if (seconds === null) {
-      return "--";
-    }
+    if (seconds === null) return "--";
 
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -93,8 +89,8 @@ export default function LeaderboardScreen() {
       <Text style={styles.title}>STEMM Challenge Leaderboard</Text>
 
       <Text style={styles.subtitle}>
-        Teams are ranked by how many activities they completed. If teams finish
-        the same number of activities, the shortest completion time wins.
+        Teams are ranked by completed activities. If teams complete the same
+        number, the shortest final challenge time wins.
       </Text>
 
       <View style={styles.tableHeader}>
@@ -108,13 +104,11 @@ export default function LeaderboardScreen() {
 
       {sortedRows.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>
-            No team challenge result found yet.
-          </Text>
+          <Text style={styles.emptyText}>No teams found in Firestore.</Text>
         </View>
       ) : (
         sortedRows.map((row, index) => (
-          <View key={row.teamDiscriminator} style={styles.rowCard}>
+          <View key={row.uid} style={styles.rowCard}>
             <Text style={[styles.rankText, styles.rankColumn]}>
               #{index + 1}
             </Text>

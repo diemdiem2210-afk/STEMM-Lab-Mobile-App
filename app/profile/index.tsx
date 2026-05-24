@@ -1,3 +1,4 @@
+import { resetChallenge } from "@/services/challengeService";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -40,14 +41,25 @@ export default function ProfileScreen() {
 
   const loadProfile = async () => {
     const savedProfile = await getTeamProfile();
+
     const savedResults = await getFullResultsLocal();
 
+    const currentTeamResults = savedProfile?.uid
+      ? savedResults.filter(
+          (result: any) => result.uid === savedProfile.uid
+        )
+      : [];
+
     setProfile(savedProfile);
-    setResults(savedResults as SavedResult[]);
+
+    setResults(currentTeamResults as SavedResult[]);
   };
 
   const resetProfile = async () => {
     await clearTeamProfile();
+    await resetChallenge();
+
+    setProfile(null);
     router.replace("/startup");
   };
 

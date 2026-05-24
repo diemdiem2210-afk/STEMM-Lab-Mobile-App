@@ -21,8 +21,9 @@ export default {
       firebaseAppId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 
       eas: {
-        projectId: "93b3d250-5852-4cb0-9c4d-48d2bc429d78"
+        projectId: "96bb0859-49e8-4b63-beea-e5060060fa2b"
       }
+
     }
   }
 };

@@ -1,5 +1,7 @@
 import { markActivityCompleted } from "@/services/challengeService";
+import { saveFullResultCloud } from "@/services/firestoreResultService";
 import { saveFullResultLocal } from "@/services/resultService";
+import { getTeamProfile } from "@/services/teamProfileService";
 import { Accelerometer } from 'expo-sensors';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -172,9 +174,16 @@ export default function BreathingScreen() {
       return;
     }
 
+    const profile = await getTeamProfile();
+
     const result = {
+      uid: profile?.uid ?? "",
+      teamName: profile?.teamName ?? "",
+      teamDiscriminator: profile?.teamDiscriminator ?? "",
+
       activityId: 'breathing',
       activityName: 'Breathing Pace Trainer',
+
       testType,
       predictedBreathsPerMinute: prediction,
       breathCount,
@@ -182,10 +191,12 @@ export default function BreathingScreen() {
       diagnosis,
 
       reflection,
+
       createdAt: new Date().toISOString(),
     };
 
     await saveFullResultLocal(result);
+    await saveFullResultCloud(result);
 
     await markActivityCompleted("breathing");
 
