@@ -109,10 +109,6 @@ export default function BreathingScreen() {
 
           setBreathCount(breathCountRef.current);
 
-          const currentDuration = Math.max(durationSeconds, 1);
-          const bpm = Math.round(
-            (breathCountRef.current / currentDuration) * 60
-          );
         }
 
         if (!isBreathPeak) {
@@ -133,8 +129,6 @@ export default function BreathingScreen() {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-
-    const finalDuration = Math.max(durationSeconds, 1);
 
 
   };
