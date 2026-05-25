@@ -1,6 +1,8 @@
+import { getFullResultsLocal } from "@/services/resultService";
 import { getTeamProfileFromFirestore } from "@/services/teamFirestoreService";
 import { getTeamProfile } from "@/services/teamProfileService";
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   ChallengeState,
@@ -24,9 +26,11 @@ export default function HomeScreen() {
 
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  useEffect(() => {
-    loadChallenge();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      loadChallenge();
+    }, [])
+  );
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -54,6 +58,15 @@ export default function HomeScreen() {
     }
 
     const cloudProfile = await getTeamProfileFromFirestore(localProfile.uid);
+    const savedResults = await getFullResultsLocal();
+
+    const currentTeamResults = localProfile?.uid
+      ? savedResults.filter((result: any) => result.uid === localProfile.uid)
+      : [];
+
+    const completedActivityIds = Array.from(
+      new Set(currentTeamResults.map((result: any) => result.activityId))
+    );
 
     if (!cloudProfile?.challengeAccepted) {
       setChallenge(null);
@@ -65,7 +78,7 @@ export default function HomeScreen() {
       accepted: true,
       startedAt: cloudProfile.challengeStartedAt ?? null,
       completedAt: cloudProfile.challengeCompletedAt ?? null,
-      completedActivityIds: cloudProfile.completedActivityIds ?? [],
+      completedActivityIds,
     };
 
     setChallenge(state);

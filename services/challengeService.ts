@@ -50,6 +50,24 @@ export const markActivityCompleted = async (activityId: string) => {
   const profile = await getTeamProfile();
   const state = await getChallengeState();
 
+  if (profile?.uid) {
+    const cloudProfile = await markActivityCompletedInFirestore(
+      profile.uid,
+      activityId
+    );
+
+    const updated: ChallengeState = {
+      accepted: cloudProfile?.challengeAccepted ?? state.accepted,
+      startedAt: cloudProfile?.challengeStartedAt ?? state.startedAt,
+      completedAt: cloudProfile?.challengeCompletedAt ?? null,
+      completedActivityIds: cloudProfile?.completedActivityIds ?? [],
+    };
+
+    await AsyncStorage.setItem(CHALLENGE_KEY, JSON.stringify(updated));
+
+    return updated;
+  }
+
   if (!state.accepted || state.completedAt) {
     return state;
   }
@@ -68,10 +86,6 @@ export const markActivityCompleted = async (activityId: string) => {
   };
 
   await AsyncStorage.setItem(CHALLENGE_KEY, JSON.stringify(updated));
-
-  if (profile?.uid) {
-    await markActivityCompletedInFirestore(profile.uid, activityId);
-  }
 
   return updated;
 };
